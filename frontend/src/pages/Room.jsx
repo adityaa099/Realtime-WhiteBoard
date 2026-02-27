@@ -111,13 +111,18 @@ const Room = () => {
                     // Directly join if already allowed
                     handleRoomReady(roomInfo);
                 } else {
-                    // Send join request to host
+                    // Send join request to host periodically to handle host refresh issues
                     setJoinStatus('requesting');
                     setLoading(false);
                     socket.emit('request-to-join', { roomId, user });
 
+                    const intervalId = setInterval(() => {
+                        socket.emit('request-to-join', { roomId, user });
+                    }, 3000);
+
                     // Listen for the response
                     socket.on('join-request-response', ({ status }) => {
+                        clearInterval(intervalId);
                         if (status === 'approved') {
                             handleRoomReady(roomInfo);
                         } else {
@@ -129,7 +134,10 @@ const Room = () => {
                 // If this is the host, listen for incoming join requests
                 if (isHost) {
                     socket.on('join-request', (requestData) => {
-                        setPendingRequests(prev => [...prev, requestData]);
+                        setPendingRequests(prev => {
+                            if (prev.find(r => r.socketId === requestData.socketId)) return prev;
+                            return [...prev, requestData];
+                        });
                     });
                 }
             } catch (err) {

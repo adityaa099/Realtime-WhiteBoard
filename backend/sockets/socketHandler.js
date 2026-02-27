@@ -5,8 +5,10 @@ module.exports = (io) => {
     io.on('connection', (socket) => {
         // ROOM MANAGEMENT
         socket.on('request-to-join', ({ roomId, user }) => {
+            console.log(`[Socket] request-to-join received from ${user.username} for room ${roomId}`);
             // Forward the request to everyone in the room (the host will be the one to respond)
             socket.to(roomId).emit('join-request', { user, socketId: socket.id });
+            console.log(`[Socket] Broadcasted join-request to room ${roomId}`);
         });
 
         socket.on('respond-join-request', async ({ targetSocketId, status, roomId, userId }) => {
