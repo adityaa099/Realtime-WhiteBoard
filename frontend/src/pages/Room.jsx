@@ -299,10 +299,16 @@ const Room = () => {
                 <div className="join-requests-overlay">
                     {pendingRequests.map((req, i) => (
                         <div key={i} className="join-request-card">
-                            <p><strong>{req.user.username}</strong> wants to join your room.</p>
+                            <div className="join-request-header">
+                                <div className="join-avatar">{req.user.username.charAt(0).toUpperCase()}</div>
+                                <div className="join-info">
+                                    <h4>{req.user.username}</h4>
+                                    <span>Wants to join</span>
+                                </div>
+                            </div>
                             <div className="join-request-actions">
-                                <button onClick={() => handleJoinResponse(req, 'approved')} className="btn btn-primary btn-sm">Allow</button>
-                                <button onClick={() => handleJoinResponse(req, 'rejected')} className="btn btn-outline btn-sm" style={{ borderColor: '#ef4444', color: '#ef4444' }}>Deny</button>
+                                <button onClick={() => handleJoinResponse(req, 'rejected')} className="btn btn-outline btn-sm action-deny">Deny</button>
+                                <button onClick={() => handleJoinResponse(req, 'approved')} className="btn btn-primary btn-sm action-allow">Allow</button>
                             </div>
                         </div>
                     ))}
