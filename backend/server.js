@@ -14,7 +14,7 @@ const server = http.createServer(app);
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || 'realtime-white-board-4efpgu36m-adityachouksey94-3035s-projects.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
