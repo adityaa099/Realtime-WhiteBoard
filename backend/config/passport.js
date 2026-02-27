@@ -43,7 +43,15 @@ passport.use(new GoogleStrategy({
         }
 
         // Create new user
-        const username = profile.displayName.replace(/\s+/g, '_').toLowerCase() + '_' + Date.now().toString(36);
+        let baseUsername = profile.displayName;
+        let username = baseUsername;
+        let counter = 1;
+
+        while (await User.findOne({ username })) {
+            username = `${baseUsername} ${counter}`;
+            counter++;
+        }
+
         user = await User.create({
             googleId: profile.id,
             username,
