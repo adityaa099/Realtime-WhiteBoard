@@ -54,10 +54,10 @@ const Dashboard = () => {
 
     const joinRoomDirectly = async (id) => {
         try {
-            await api.post(`/rooms/join/${id}`);
+            await api.get(`/rooms/${id}`);
             navigate(`/room/${id}`);
         } catch {
-            alert('Failed to join room. Please check the Room ID.');
+            alert('Failed to find room. Please check the Room ID.');
         }
     };
 
