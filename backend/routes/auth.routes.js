@@ -19,7 +19,7 @@ router.get('/google', passport.authenticate('google', {
 
 router.get('/google/callback', passport.authenticate('google', {
     session: false,
-    failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`
+    failureRedirect: `${process.env.FRONTEND_URL || 'https://realtime-white-board-opal.vercel.app'}/login?error=oauth_failed`
 }), (req, res) => {
     // Generate JWT token for the authenticated user
     const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, {
@@ -27,7 +27,7 @@ router.get('/google/callback', passport.authenticate('google', {
     });
 
     // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://realtime-white-board-opal.vercel.app';
     res.redirect(`${frontendUrl}/oauth/callback?token=${token}&userId=${req.user._id}&username=${encodeURIComponent(req.user.username)}&email=${encodeURIComponent(req.user.email)}`);
 });
 

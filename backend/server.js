@@ -14,7 +14,7 @@ const server = http.createServer(app);
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'realtime-white-board-4efpgu36m-adityachouksey94-3035s-projects.vercel.app',
+  origin: process.env.FRONTEND_URL || 'https://realtime-white-board-opal.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
@@ -40,7 +40,7 @@ mongoose.connect(process.env.MONGODB_URI)
 // Socket.io Setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: process.env.FRONTEND_URL || 'https://realtime-white-board-opal.vercel.app',
     methods: ['GET', 'POST'],
     credentials: true
   }
