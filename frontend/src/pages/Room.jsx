@@ -85,8 +85,8 @@ const Room = () => {
 
             socket.on('user-joined', (newUser) => {
                 setParticipants(prev => {
-                    if (!prev.find(p => p.socketId === newUser.socketId)) {
-                        return [...prev, { ...newUser, socketId: newUser.socketId }];
+                    if (!prev.find(p => p._id === newUser.userId || p._id === newUser._id)) {
+                        return [...prev, { ...newUser, _id: newUser.userId || newUser._id }];
                     }
                     return prev;
                 });
@@ -131,11 +131,10 @@ const Room = () => {
                     });
                 }
 
-                // If this is the host, listen for incoming join requests
                 if (isHost) {
                     socket.on('join-request', (requestData) => {
                         setPendingRequests(prev => {
-                            if (prev.find(r => r.socketId === requestData.socketId)) return prev;
+                            if (prev.find(r => r.user._id === requestData.user._id)) return prev;
                             return [...prev, requestData];
                         });
                     });

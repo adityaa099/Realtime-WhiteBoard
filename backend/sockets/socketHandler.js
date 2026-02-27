@@ -43,9 +43,15 @@ module.exports = (io) => {
             });
 
             // Send current participants to the joined user
+            // Send current participants to the joined user (deduplicated by userId)
             const clients = await io.in(roomId).fetchSockets();
-            const participants = clients.map(c => c.user).filter(Boolean);
-            socket.emit('room-participants', participants);
+            const rawParticipants = clients.map(c => c.user).filter(Boolean);
+
+            const uniqueParticipants = Array.from(
+                new Map(rawParticipants.map(item => [item._id, item])).values()
+            );
+
+            socket.emit('room-participants', uniqueParticipants);
         });
 
         socket.on('leave-room', ({ roomId, userId }) => {
