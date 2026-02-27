@@ -1,8 +1,32 @@
 const WhiteboardData = require('../models/WhiteboardData');
+const Room = require('../models/Room');
 
 module.exports = (io) => {
     io.on('connection', (socket) => {
         // ROOM MANAGEMENT
+        socket.on('request-to-join', ({ roomId, user }) => {
+            // Forward the request to everyone in the room (the host will be the one to respond)
+            socket.to(roomId).emit('join-request', { user, socketId: socket.id });
+        });
+
+        socket.on('respond-join-request', async ({ targetSocketId, status, roomId, userId }) => {
+            // Send the response back to the user who requested
+            io.to(targetSocketId).emit('join-request-response', { status });
+
+            // If approved, add to participants in DB
+            if (status === 'approved') {
+                try {
+                    const room = await Room.findOne({ roomId });
+                    if (room && !room.participants.includes(userId)) {
+                        room.participants.push(userId);
+                        await room.save();
+                    }
+                } catch (err) {
+                    console.error('Error adding participant:', err);
+                }
+            }
+        });
+
         socket.on('join-room', async ({ roomId, user }) => {
             socket.join(roomId);
             // Store user details in socket

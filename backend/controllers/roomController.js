@@ -55,6 +55,24 @@ const joinRoom = async (req, res) => {
     }
 };
 
+// @desc    Get room details without joining
+// @route   GET /api/rooms/:roomId
+// @access  Private
+const getRoom = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const room = await Room.findOne({ roomId });
+
+        if (!room) {
+            return res.status(404).json({ message: 'Room not found' });
+        }
+
+        res.status(200).json(room);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
 // @desc    Get all active/public rooms
 // @route   GET /api/rooms
 // @access  Private
@@ -124,6 +142,7 @@ const deleteRoom = async (req, res) => {
 module.exports = {
     createRoom,
     joinRoom,
+    getRoom,
     getRooms,
     getWhiteboardHistory,
     deleteRoom

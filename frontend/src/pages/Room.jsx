@@ -21,6 +21,8 @@ const Room = () => {
     const [roomDetails, setRoomDetails] = useState(null);
     const [participants, setParticipants] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [joinStatus, setJoinStatus] = useState('checking'); // 'checking' | 'requesting' | 'joined' | 'rejected'
+    const [pendingRequests, setPendingRequests] = useState([]);
     const [copied, setCopied] = useState(false);
 
     // Whiteboard state
@@ -74,43 +76,78 @@ const Room = () => {
     useEffect(() => {
         if (!socket || !user) return;
 
-        const joinRoom = async () => {
+        const handleRoomReady = (roomInfo) => {
+            setRoomDetails(roomInfo);
+            setJoinStatus('joined');
+            socket.emit('join-room', { roomId, user });
+
+            socket.on('room-participants', (users) => setParticipants(users));
+
+            socket.on('user-joined', (newUser) => {
+                setParticipants(prev => {
+                    if (!prev.find(p => p.socketId === newUser.socketId)) {
+                        return [...prev, { ...newUser, socketId: newUser.socketId }];
+                    }
+                    return prev;
+                });
+            });
+
+            socket.on('user-left', ({ socketId }) => {
+                setParticipants(prev => prev.filter(p => p.socketId !== socketId));
+            });
+            setLoading(false);
+        };
+
+        const setupRoom = async () => {
             try {
-                const res = await api.post(`/rooms/join/${roomId}`);
-                setRoomDetails(res.data);
+                // Fetch room info first to see if we're a host/participant
+                const res = await api.get(`/rooms/${roomId}`);
+                const roomInfo = res.data;
 
-                socket.emit('join-room', { roomId, user });
+                const isHost = roomInfo.hostId?.toString() === user._id?.toString() || roomInfo.hostId === user._id;
+                const isParticipant = roomInfo.participants?.includes(user._id);
 
-                socket.on('room-participants', (users) => setParticipants(users));
+                if (isHost || isParticipant) {
+                    // Directly join if already allowed
+                    handleRoomReady(roomInfo);
+                } else {
+                    // Send join request to host
+                    setJoinStatus('requesting');
+                    setLoading(false);
+                    socket.emit('request-to-join', { roomId, user });
 
-                socket.on('user-joined', (newUser) => {
-                    setParticipants(prev => {
-                        if (!prev.find(p => p.socketId === newUser.socketId)) {
-                            return [...prev, { ...newUser, socketId: newUser.socketId }];
+                    // Listen for the response
+                    socket.on('join-request-response', ({ status }) => {
+                        if (status === 'approved') {
+                            handleRoomReady(roomInfo);
+                        } else {
+                            setJoinStatus('rejected');
                         }
-                        return prev;
                     });
-                });
+                }
 
-                socket.on('user-left', ({ socketId }) => {
-                    setParticipants(prev => prev.filter(p => p.socketId !== socketId));
-                });
-
-                setLoading(false);
+                // If this is the host, listen for incoming join requests
+                if (isHost) {
+                    socket.on('join-request', (requestData) => {
+                        setPendingRequests(prev => [...prev, requestData]);
+                    });
+                }
             } catch (err) {
-                console.error(err);
-                alert('Failed to join room. Please check the Room ID.');
+                console.error('Room Check Error:', err);
+                alert('Room not found or server error.');
                 navigate('/dashboard');
             }
         };
 
-        joinRoom();
+        setupRoom();
 
         return () => {
             socket.emit('leave-room', { roomId, userId: user._id });
             socket.off('room-participants');
             socket.off('user-joined');
             socket.off('user-left');
+            socket.off('join-request-response');
+            socket.off('join-request');
         };
     }, [roomId, socket, user, navigate]);
 
@@ -208,13 +245,63 @@ const Room = () => {
         }
     };
 
-    if (loading) return <div className="room-loading">Joining Room…</div>;
-
     const isHost = roomDetails?.hostId?.toString() === user?._id?.toString() ||
         roomDetails?.hostId === user?._id;
 
+    const handleJoinResponse = (request, status) => {
+        socket.emit('respond-join-request', {
+            targetSocketId: request.socketId,
+            status,
+            roomId,
+            userId: request.user._id
+        });
+        setPendingRequests(prev => prev.filter(r => r.socketId !== request.socketId));
+    };
+
+    if (loading || joinStatus === 'checking') return <div className="room-loading">Joining Room…</div>;
+
+    if (joinStatus === 'requesting') {
+        return (
+            <div className="room-loading" style={{ flexDirection: 'column', gap: '15px' }}>
+                <span className="spinner" style={{ width: 40, height: 40, borderWidth: 4, display: 'block', margin: '0 auto' }}></span>
+                <h3>Waiting for Host Approval...</h3>
+                <p>The host of this room must allow you to join.</p>
+                <button onClick={() => navigate('/dashboard')} className="btn btn-outline" style={{ marginTop: 20 }}>
+                    Cancel & Return
+                </button>
+            </div>
+        );
+    }
+
+    if (joinStatus === 'rejected') {
+        return (
+            <div className="room-loading" style={{ flexDirection: 'column', gap: '15px' }}>
+                <h3 style={{ color: '#ef4444' }}>Request Declined</h3>
+                <p>The host declined your request to join.</p>
+                <button onClick={() => navigate('/dashboard')} className="btn btn-primary" style={{ marginTop: 20 }}>
+                    Return to Dashboard
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="room-layout">
+            {/* Host Join Requests Toast */}
+            {isHost && pendingRequests.length > 0 && (
+                <div className="join-requests-overlay">
+                    {pendingRequests.map((req, i) => (
+                        <div key={i} className="join-request-card">
+                            <p><strong>{req.user.username}</strong> wants to join your room.</p>
+                            <div className="join-request-actions">
+                                <button onClick={() => handleJoinResponse(req, 'approved')} className="btn btn-primary btn-sm">Allow</button>
+                                <button onClick={() => handleJoinResponse(req, 'rejected')} className="btn btn-outline btn-sm" style={{ borderColor: '#ef4444', color: '#ef4444' }}>Deny</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             <header className="room-header">
                 <div className="room-title">
                     <h2>{roomDetails?.name || 'Whiteboard'}</h2>
